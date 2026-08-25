@@ -148,6 +148,20 @@ pub enum FetchLinkError {
     Http(#[from] ureq::Error),
 }
 
+/// Takes every completed-but-unread result out of `state`.
+/// O(1) swap of the ready queue; no scan over `results`.
+fn drain_ready(state: &mut State) -> Vec<(usize, Result<String, FetchLinkError>)> {
+    let ready_indices = std::mem::take(&mut state.ready);
+    let mut out = Vec::with_capacity(ready_indices.len());
+    for index in ready_indices {
+        // each ready index is guaranteed to have Some result
+        if let Some(res) = state.results[index].take() {
+            out.push((index, res));
+        }
+    }
+    out
+}
+
 /// Handle to a background fetch: results are collected via `wait()` (blocks
 /// until done) or `try_results()`. The total number of jobs is dynamic — it
 /// grows as URLs are pushed to the owning [`WorkerPool`](crate::WorkerPool).
@@ -190,17 +204,37 @@ impl FetchHandle {
     /// Each completed result is returned exactly once — O(1) queue drain, not O(n) scan.
     pub fn ready_results(&self) -> Vec<(usize, Result<String, FetchLinkError>)> {
         let (lock, _) = &*self.state;
+        drain_ready(&mut recover_lock(lock))
+    }
+
+    /// Blocks until at least one result is ready, then takes everything that
+    /// arrived, exactly like [`ready_results`](Self::ready_results).
+    ///
+    /// Returns an empty vector only when every enqueued job has completed, so
+    /// a consumer loop is a plain `while` with no sleeping:
+    ///
+    /// ```ignore
+    /// loop {
+    ///     for (index, res) in handle.wait_ready() {
+    ///         // ...
+    ///     }
+    ///     if handle.is_finished() {
+    ///         break;
+    ///     }
+    /// }
+    /// ```
+    pub fn wait_ready(&self) -> Vec<(usize, Result<String, FetchLinkError>)> {
+        let (lock, cvar) = &*self.state;
         let mut state = recover_lock(lock);
-        // O(1) swap of the ready queue; no scan over `results` (O(n)) any more
-        let ready_indices = std::mem::take(&mut state.ready);
-        let mut out = Vec::with_capacity(ready_indices.len());
-        for index in ready_indices {
-            // each ready index is guaranteed to have Some result
-            if let Some(res) = state.results[index].take() {
-                out.push((index, res));
-            }
+        // `total` grows as URLs are pushed and `push` notifies the condvar, so
+        // waiting here cannot miss work that is enqueued after the check.
+        while state.ready.is_empty() && state.completed < state.total {
+            state = match cvar.wait(state) {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
         }
-        out
+        drain_ready(&mut state)
     }
 
     /// Blocks until all tasks finish and returns the results in original order.
