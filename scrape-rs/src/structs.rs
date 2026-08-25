@@ -48,6 +48,7 @@ impl ScrapeJob {
     }
 }
 
+#[derive(Default)]
 pub struct Queue {
     jobs: Mutex<VecDeque<Option<ScrapeJob>>>,
     avaliable: Condvar,
