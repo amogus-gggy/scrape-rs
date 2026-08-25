@@ -1,7 +1,6 @@
 use scrape_rs::init_worker_pool;
-use scrape_rs::parsers::{select_all, select_first, select_html};
+use scrape_rs::parsers::Doc;
 use std::num::NonZeroUsize;
-use std::thread::sleep;
 
 #[derive(Debug)]
 struct Quote {
@@ -10,13 +9,15 @@ struct Quote {
     tags: Vec<String>,
 }
 
+/// Parses the page once and reads every field off that single parse.
 fn parse_quotes(html: &str) -> Vec<Quote> {
-    select_html(html, ".quote")
+    Doc::parse(html)
+        .select(".quote")
         .into_iter()
         .map(|quote| Quote {
-            text: select_first(&quote, ".text").unwrap_or_default(),
-            author: select_first(&quote, ".author").unwrap_or_default(),
-            tags: select_all(&quote, ".tag"),
+            text: quote.text_of(".text").unwrap_or_default(),
+            author: quote.text_of(".author").unwrap_or_default(),
+            tags: quote.texts_of(".tag"),
         })
         .collect()
 }
@@ -32,17 +33,16 @@ fn main() {
 
     for url in urls {
         pool.push(url);
-
     }
     pool.close(); // Signal that workers can finish, and that there will not be any new task.
 
-    // Keep polling for partial results and parse them as soon as they arrive
+    // Parse pages as soon as they arrive. wait_ready blocks until there is
+    // something to do, so there is no polling interval to tune.
     loop {
-        for (_, res) in fetch_handle.ready_results() {
+        for (_, res) in fetch_handle.wait_ready() {
             match res {
                 Ok(html) => {
-                    let quotes = parse_quotes(&html);
-                    for quote in quotes {
+                    for quote in parse_quotes(&html) {
                         println!("{:?}", quote);
                     }
                 }
@@ -53,8 +53,5 @@ fn main() {
         if fetch_handle.is_finished() {
             break;
         }
-
-        // Avoid wasting CPU — short sleep between polls
-        std::thread::sleep(std::time::Duration::from_millis(1));
     }
 }

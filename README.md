@@ -5,9 +5,9 @@ A small, multithreaded web scraping library in Rust. It fetches web pages concur
 ## Features
 
 - **Worker pool** — `init_worker_pool` spins up a configurable number of worker threads and returns a queue you can push URLs into at any time, plus a `FetchHandle` to read results
-- **Incremental results** — process responses as soon as they arrive via `FetchHandle::ready_results`, or wait for everything with `wait()`
+- **Incremental results** — process responses as soon as they arrive via `FetchHandle::wait_ready` (blocks until there is something to do, no polling), or wait for everything with `wait()`
 - **Single requests** — `fetch_link` for one-off GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS requests with optional body and content type
-- **HTML parsing helpers** — `select_html`, `select_first`, and `select_all` for querying HTML with CSS selectors
+- **Parse-once HTML querying** — `Doc` parses a page a single time and hands out `Node`s for sub-queries; compiled CSS selectors are cached per thread
 - **Built-in timeouts** — 5 second default timeout, or bring your own `ureq::Agent`
 
 ## Usage
@@ -23,7 +23,7 @@ scrape-rs = { path = "scrape-rs" }
 
 ```rust
 use std::num::NonZeroUsize;
-use scrape_rs::{init_worker_pool, parsers::{select_first, select_html}};
+use scrape_rs::{init_worker_pool, parsers::Doc};
 
 let urls: Vec<String> = (1..=10)
     .map(|i| format!("https://quotes.toscrape.com/page/{i}"))
@@ -38,10 +38,10 @@ for url in urls {
 pool.close();
 
 loop {
-    // Handle results as they complete
-    for (_, res) in handle.ready_results() {
+    // Handle results as they complete; wait_ready blocks until one arrives
+    for (_, res) in handle.wait_ready() {
         if let Ok(html) = res {
-            if let Some(title) = select_first(&html, "h1") {
+            if let Some(title) = Doc::parse(&html).text_of("h1") {
                 println!("{title}");
             }
         }
@@ -49,21 +49,28 @@ loop {
     if handle.is_finished() {
         break;
     }
-    std::thread::sleep(std::time::Duration::from_millis(10));
 }
 ```
 
 ### Parse HTML with CSS selectors
 
-```rust
-use scrape_rs::parsers::{select_html, select_all, select_first};
+`Doc::parse` walks the HTML once; `Node` sub-queries reuse that parse instead of
+re-parsing the page for every field.
 
-for quote in select_html(html, ".quote") {
-    let text = select_first(&quote, ".text").unwrap_or_default();
-    let tags = select_all(&quote, ".tag");
-    println!("{text} — tags: {tags:?}");
+```rust
+use scrape_rs::parsers::Doc;
+
+let doc = Doc::parse(html);
+for quote in doc.select(".quote") {
+    let text = quote.text_of(".text").unwrap_or_default();
+    let tags = quote.texts_of(".tag");
+    let href = quote.first("a").and_then(|a| a.attr("href"));
+    println!("{text} — tags: {tags:?} — {href:?}");
 }
 ```
+
+For one-off queries the free functions `select_all`, `select_first` and
+`select_html` are still available; they parse the document on each call.
 
 See the `test/` directory for a full working example.
 
