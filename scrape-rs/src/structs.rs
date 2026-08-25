@@ -163,7 +163,10 @@ impl FetchHandle {
         state.completed >= state.total
     }
 
-    /// Returns results if everything is ready, otherwise None (does not block)
+    /// Returns results if everything is ready, otherwise None (does not block).
+    ///
+    /// Results already taken by [`ready_results`](Self::ready_results) are not
+    /// returned again.
     pub fn try_results(&self) -> Option<Vec<Result<String, FetchLinkError>>> {
         if !self.is_finished() {
             return None;
@@ -200,7 +203,10 @@ impl FetchHandle {
         out
     }
 
-    /// Blocks until all tasks finish and returns the results in original order
+    /// Blocks until all tasks finish and returns the results in original order.
+    ///
+    /// Results already taken by [`ready_results`](Self::ready_results) are not
+    /// returned again.
     pub fn wait(&self) -> Vec<Result<String, FetchLinkError>> {
         let (lock, cvar) = &*self.state;
         let mut state = recover_lock(lock);
@@ -214,12 +220,17 @@ impl FetchHandle {
         self.collect()
     }
 
+    /// Drains every result still held by the state, in enqueue order.
+    ///
+    /// Results already handed out by [`ready_results`](Self::ready_results) are
+    /// gone from the state and are simply skipped: taking a result twice is not
+    /// possible, and mixing the two APIs must not panic.
     fn collect(&self) -> Vec<Result<String, FetchLinkError>> {
         let (lock, _) = &*self.state;
         let mut state = recover_lock(lock);
         // Clear ready since we drain everything in order
         state.ready.clear();
         let results = std::mem::take(&mut state.results);
-        results.into_iter().map(|r| r.unwrap()).collect()
+        results.into_iter().flatten().collect()
     }
 }
