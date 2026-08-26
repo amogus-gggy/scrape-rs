@@ -77,7 +77,10 @@ impl Queue {
                 None => {}
             }
             // Poison recovery on the condvar wait as well.
-            jobs = match self.avaliable.wait_timeout(jobs, std::time::Duration::from_secs(1)) {
+            jobs = match self
+                .avaliable
+                .wait_timeout(jobs, std::time::Duration::from_secs(1))
+            {
                 Ok((guard, _)) => guard,
                 Err(poisoned) => {
                     let (guard, _) = poisoned.into_inner();
@@ -106,7 +109,11 @@ pub fn worker(queue: Arc<Queue>, mut handler: impl FnMut(&mut ScrapeJob) -> bool
         job.set_status(JobStatus::Running);
         let ok = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| handler(&mut job)))
             .unwrap_or(false);
-        let status = if ok { JobStatus::Finished } else { JobStatus::Failed };
+        let status = if ok {
+            JobStatus::Finished
+        } else {
+            JobStatus::Failed
+        };
         job.set_status(status);
     }
 }

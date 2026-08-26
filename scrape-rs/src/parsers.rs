@@ -67,8 +67,7 @@ impl Doc {
     /// All elements matching `selector`. An invalid selector yields an empty
     /// vector (same as the free functions).
     pub fn select(&self, selector: &str) -> Vec<Node<'_>> {
-        with_selector(selector, |sel| self.html.select(sel).map(Node).collect())
-            .unwrap_or_default()
+        with_selector(selector, |sel| self.html.select(sel).map(Node).collect()).unwrap_or_default()
     }
 
     /// The first element matching `selector`.
@@ -83,7 +82,10 @@ impl Doc {
 
     /// Text of every element matching `selector`.
     pub fn texts_of(&self, selector: &str) -> Vec<String> {
-        self.select(selector).into_iter().map(|n| n.text()).collect()
+        self.select(selector)
+            .into_iter()
+            .map(|n| n.text())
+            .collect()
     }
 }
 
@@ -110,7 +112,10 @@ impl<'a> Node<'a> {
 
     /// Text of every descendant matching `selector`.
     pub fn texts_of(&self, selector: &str) -> Vec<String> {
-        self.select(selector).into_iter().map(|n| n.text()).collect()
+        self.select(selector)
+            .into_iter()
+            .map(|n| n.text())
+            .collect()
     }
 
     /// All text nodes of this element, joined by a space.

@@ -1,8 +1,8 @@
 pub mod parsers;
 pub mod structs;
 
-use crate::structs::{FetchError, FetchLinkError, recover_lock};
 use crate::structs::*;
+use crate::structs::{FetchError, FetchLinkError, recover_lock};
 use std::collections::VecDeque;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Condvar, Mutex};
@@ -72,8 +72,7 @@ pub fn init_worker_pool_with_agent(
     }
 
     let queue = Arc::new(Queue::new());
-    let state: Arc<(Mutex<State>, Condvar)> =
-        Arc::new((Mutex::new(State::new()), Condvar::new()));
+    let state: Arc<(Mutex<State>, Condvar)> = Arc::new((Mutex::new(State::new()), Condvar::new()));
 
     let mut workers = Vec::with_capacity(num_threads.get());
     for _ in 0..num_threads.get() {
@@ -118,10 +117,7 @@ pub fn init_worker_pool_with_agent(
 }
 
 /// Fetch a batch of URLs concurrently using the default agent.
-pub fn fetch_many(
-    urls: Vec<String>,
-    num_threads: NonZeroUsize,
-) -> Result<FetchHandle, FetchError> {
+pub fn fetch_many(urls: Vec<String>, num_threads: NonZeroUsize) -> Result<FetchHandle, FetchError> {
     fetch_many_with_agent(urls, num_threads, default_agent())
 }
 
@@ -272,13 +268,21 @@ pub fn fetch_link_with_agent(
         Method::DELETE => with_timeout(agent, agent.delete(url)).call()?,
         Method::HEAD => with_timeout(agent, agent.head(url)).call()?,
         Method::OPTIONS => with_timeout(agent, agent.options(url)).call()?,
-        Method::POST => {
-            send_body(with_timeout(agent, agent.post(url)), body.as_deref(), content_type)?
-        }
-        Method::PUT => send_body(with_timeout(agent, agent.put(url)), body.as_deref(), content_type)?,
-        Method::PATCH => {
-            send_body(with_timeout(agent, agent.patch(url)), body.as_deref(), content_type)?
-        }
+        Method::POST => send_body(
+            with_timeout(agent, agent.post(url)),
+            body.as_deref(),
+            content_type,
+        )?,
+        Method::PUT => send_body(
+            with_timeout(agent, agent.put(url)),
+            body.as_deref(),
+            content_type,
+        )?,
+        Method::PATCH => send_body(
+            with_timeout(agent, agent.patch(url)),
+            body.as_deref(),
+            content_type,
+        )?,
         // The library does not implement this method — report it clearly,
         // do not fake an HTTP 405 as if it came from the server.
         _ => return Err(FetchLinkError::UnsupportedMethod(method)),
@@ -291,10 +295,7 @@ pub fn fetch_link_with_agent(
 /// If the agent already has a shorter global timeout configured, the stricter
 /// one wins; an agent without any timeout still gets `DEFAULT_TIMEOUT`, so a
 /// silently-hanging server can never block a call forever.
-fn with_timeout<S>(
-    agent: &Agent,
-    builder: ureq::RequestBuilder<S>,
-) -> ureq::RequestBuilder<S> {
+fn with_timeout<S>(agent: &Agent, builder: ureq::RequestBuilder<S>) -> ureq::RequestBuilder<S> {
     let effective = match agent.config().timeouts().global {
         Some(configured) if configured < DEFAULT_TIMEOUT => Some(configured),
         _ => Some(DEFAULT_TIMEOUT),
@@ -591,9 +592,14 @@ mod tests {
         });
         let no_timeout_agent = Agent::config_builder().build().new_agent();
         let start = std::time::Instant::now();
-        let err =
-            fetch_link_with_agent(&no_timeout_agent, &srv.url("/hang"), Method::GET, None, None)
-                .unwrap_err();
+        let err = fetch_link_with_agent(
+            &no_timeout_agent,
+            &srv.url("/hang"),
+            Method::GET,
+            None,
+            None,
+        )
+        .unwrap_err();
         let elapsed = start.elapsed();
         assert!(
             matches!(err, FetchLinkError::Http(ureq::Error::Timeout(_))),
@@ -617,11 +623,8 @@ mod tests {
             (200, body)
         });
         let urls: Vec<String> = (0..5).map(|i| srv.url(&format!("/page/{i}"))).collect();
-        let pool = init_worker_pool_with_agent(
-            NonZeroUsize::new(2).unwrap(),
-            fast_agent(),
-        )
-        .unwrap();
+        let pool =
+            init_worker_pool_with_agent(NonZeroUsize::new(2).unwrap(), fast_agent()).unwrap();
         let handle = pool.handle();
         for url in urls {
             pool.push(url);
@@ -865,7 +868,8 @@ mod tests {
             let body = format!("body for {path}");
             (200, body)
         });
-        let pool = init_worker_pool_with_agent(NonZeroUsize::new(2).unwrap(), fast_agent()).unwrap();
+        let pool =
+            init_worker_pool_with_agent(NonZeroUsize::new(2).unwrap(), fast_agent()).unwrap();
         let handle = pool.handle();
         pool.push(srv.url("/a"));
         // wait for the first one to land
