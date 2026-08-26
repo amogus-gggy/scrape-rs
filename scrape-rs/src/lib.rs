@@ -259,7 +259,8 @@ pub fn fetch_link_with_agent(
         // do not fake an HTTP 405 as if it came from the server.
         _ => return Err(FetchLinkError::UnsupportedMethod(method)),
     };
-    Ok(response.into_body().read_to_string()?)
+
+    response.into_body().read_to_string()
 }
 
 /// Bound the request end-to-end by `DEFAULT_TIMEOUT`.

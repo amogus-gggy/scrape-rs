@@ -3,6 +3,7 @@ use scrape_rs::parsers::Doc;
 use std::num::NonZeroUsize;
 
 #[derive(Debug)]
+#[allow(unused)]
 struct Quote {
     text: String,
     author: String,
@@ -54,4 +55,10 @@ fn main() {
             break;
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    include!("tests.rs");
 }

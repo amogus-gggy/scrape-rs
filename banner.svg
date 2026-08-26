@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="220" viewBox="0 0 520 110">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#9A3412"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="100%" height="100%" fill="url(#bgGlow)" rx="6" />
+
+  <text font-family="'Courier New', Courier, monospace" font-size="12" xml:space="preserve">
+    <tspan x="15" y="25" fill="#9A3412">███████╗ ██████╗██████╗  █████╗ ██████╗ ███████╗    ██████╗ ███████╗</tspan>
+    <tspan x="15" y="40" fill="#EA580C">██╔════╝██╔════╝██╔══██╗██╔══██╗██╔══██╗██╔════╝    ██╔══██╗██╔════╝</tspan>
+    <tspan x="15" y="55" fill="#F97316">███████╗██║     ██████╔╝███████║██████╔╝█████╗█████╗██████╔╝███████╗</tspan>
+    <tspan x="15" y="70" fill="#F97316">╚════██║██║     ██╔══██╗██╔══██║██╔═══╝ ██╔══╝╚════╝██╔══██╗╚════██║</tspan>
+    <tspan x="15" y="85" fill="#EA580C">███████║╚██████╗██║  ██║██║  ██║██║     ███████╗    ██║  ██║███████║</tspan>
+    <tspan x="15" y="100" fill="#9A3412">╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚══════╝    ╚═╝  ╚═╝╚══════╝</tspan>
+  </text>
+</svg>
