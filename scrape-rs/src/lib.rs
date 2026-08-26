@@ -173,8 +173,27 @@ impl WorkerPool {
     /// the [`FetchHandle`] regardless. Calling `close` (or dropping the pool)
     /// is only needed so the worker threads can terminate instead of idling
     /// forever; it does not affect already-submitted work.
+    ///
+    /// Use [`close_and_join`](Self::close_and_join) instead when you want to
+    /// block until the workers are actually gone.
     pub fn close(mut self) {
         self.shutdown();
+    }
+
+    /// Like [`close`](Self::close), but waits for every worker thread to exit.
+    ///
+    /// Useful when the caller wants the end of the work as a plain function
+    /// return — collecting everything in one go, or shutting down cleanly —
+    /// rather than leaving detached threads running behind its back. Do not
+    /// call it before consuming incremental results: it only returns once all
+    /// queued URLs have been fetched.
+    pub fn close_and_join(mut self) {
+        self.shutdown();
+        for worker in std::mem::take(&mut self.workers) {
+            // A worker cannot propagate a panic — `worker()` catches them and
+            // marks the job failed — so a join error is nothing to act on.
+            let _ = worker.join();
+        }
     }
 }
 
@@ -625,6 +644,72 @@ mod tests {
             );
             assert_eq!(r.unwrap(), format!("body for /page/{i}"));
         }
+    }
+
+    #[test]
+    fn wait_ready_streams_without_polling() {
+        let srv = TestServer::spawn(|_, path, _| (200, format!("body for {path}")));
+        let pool =
+            init_worker_pool_with_agent(NonZeroUsize::new(2).unwrap(), fast_agent()).unwrap();
+        let handle = pool.handle();
+        for i in 0..6 {
+            pool.push(srv.url(&format!("/page/{i}")));
+        }
+        pool.close();
+
+        // No sleeping anywhere: wait_ready blocks until something is ready and
+        // returns empty only once every job is accounted for.
+        let mut seen = Vec::new();
+        loop {
+            seen.extend(handle.wait_ready());
+            if handle.is_finished() {
+                break;
+            }
+        }
+        seen.extend(handle.wait_ready());
+
+        assert_eq!(seen.len(), 6);
+        seen.sort_by_key(|(index, _)| *index);
+        for (index, res) in seen {
+            assert!(res.is_ok(), "job {index} failed: {res:?}");
+            assert_eq!(res.unwrap(), format!("body for /page/{index}"));
+        }
+    }
+
+    #[test]
+    fn wait_after_ready_results_does_not_panic() {
+        let srv = TestServer::spawn(|_, path, _| (200, format!("body for {path}")));
+        let pool =
+            init_worker_pool_with_agent(NonZeroUsize::new(1).unwrap(), fast_agent()).unwrap();
+        let handle = pool.handle();
+        for i in 0..4 {
+            pool.push(srv.url(&format!("/page/{i}")));
+        }
+        pool.close();
+
+        // Take part of the results incrementally, then fall back to wait():
+        // every result must be delivered exactly once, and nothing may panic.
+        let taken = handle.wait_ready().len();
+        let rest = handle.wait();
+        assert_eq!(taken + rest.len(), 4);
+        assert!(rest.iter().all(|r| r.is_ok()));
+    }
+
+    #[test]
+    fn close_and_join_returns_after_workers_exit() {
+        let srv = TestServer::spawn(|_, _, _| (200, "ok".to_string()));
+        let pool =
+            init_worker_pool_with_agent(NonZeroUsize::new(2).unwrap(), fast_agent()).unwrap();
+        let handle = pool.handle();
+        for i in 0..4 {
+            pool.push(srv.url(&format!("/{i}")));
+        }
+        pool.close_and_join();
+
+        // Joining means the work is done — no polling needed to observe it.
+        assert!(handle.is_finished());
+        assert_eq!(handle.completed(), 4);
+        assert_eq!(handle.wait().len(), 4);
     }
 
     #[test]
