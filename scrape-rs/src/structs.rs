@@ -102,10 +102,7 @@ impl Queue {
 /// the job is marked `Failed` and the worker keeps serving the queue instead
 /// of silently dying.
 pub fn worker(queue: Arc<Queue>, mut handler: impl FnMut(&mut ScrapeJob) -> bool + Send + 'static) {
-    loop {
-        let Some(mut job) = queue.next() else {
-            break;
-        };
+    while let Some(mut job) = queue.next() {
         job.set_status(JobStatus::Running);
         let ok = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| handler(&mut job)))
             .unwrap_or(false);

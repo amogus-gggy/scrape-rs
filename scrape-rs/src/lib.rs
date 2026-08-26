@@ -117,6 +117,30 @@ pub fn init_worker_pool_with_agent(
     })
 }
 
+/// Fetch a batch of URLs concurrently using the default agent.
+pub fn fetch_many(
+    urls: Vec<String>,
+    num_threads: NonZeroUsize,
+) -> Result<FetchHandle, FetchError> {
+    fetch_many_with_agent(urls, num_threads, default_agent())
+}
+
+/// Fetch a batch of URLs concurrently using a shared caller-provided agent.
+/// Results retain the order of the input URLs when collected with `wait()`.
+pub fn fetch_many_with_agent(
+    urls: Vec<String>,
+    num_threads: NonZeroUsize,
+    agent: Agent,
+) -> Result<FetchHandle, FetchError> {
+    let pool = init_worker_pool_with_agent(num_threads, agent)?;
+    for url in urls {
+        pool.push(url);
+    }
+    let handle = pool.handle();
+    pool.close();
+    Ok(handle)
+}
+
 /// A queue of URLs to be fetched by a [`WorkerPool`].
 ///
 /// Each `push` is assigned a stable index so results come back in the order
@@ -260,7 +284,7 @@ pub fn fetch_link_with_agent(
         _ => return Err(FetchLinkError::UnsupportedMethod(method)),
     };
 
-    response.into_body().read_to_string()
+    Ok(response.into_body().read_to_string()?)
 }
 
 /// Bound the request end-to-end by `DEFAULT_TIMEOUT`.

@@ -1,5 +1,5 @@
 use scrape_rs::{
-    DEFAULT_TIMEOUT, default_agent, fetch_link, fetch_link_with_agent,
+    DEFAULT_TIMEOUT, default_agent, fetch_link, fetch_link_with_agent, fetch_many,
     fetch_many_with_agent,
 };
 
@@ -207,7 +207,7 @@ fn fetch_link_timeout() {
         .expect_err("should timeout");
     let elapsed = start.elapsed();
     assert!(
-        matches!(err, ureq::Error::Timeout(_)),
+        matches!(err, scrape_rs::structs::FetchLinkError::Http(ureq::Error::Timeout(_))),
         "expected Timeout, got {err:?}"
     );
     // Must timeout quickly (~400ms), not wait for full 2s server delay
@@ -247,7 +247,10 @@ fn fetch_link_status_error() {
     let err =
         fetch_link_with_agent(&fast_agent(), &srv.url("/missing"), Method::GET, None, None)
             .unwrap_err();
-    assert!(matches!(err, ureq::Error::StatusCode(404)));
+    assert!(matches!(
+        err,
+        scrape_rs::structs::FetchLinkError::Http(ureq::Error::StatusCode(404))
+    ));
 }
 
 // -------------------------------------------------------------------------
@@ -357,7 +360,10 @@ fn fetch_many_timeout_mixed() {
     // fast should succeed, slow should timeout (order preserved)
     assert_eq!(results[0].as_ref().unwrap(), "fast");
     assert!(
-        matches!(results[1].as_ref().unwrap_err(), ureq::Error::Timeout(_)),
+        matches!(
+            results[1].as_ref().unwrap_err(),
+            scrape_rs::structs::FetchLinkError::Http(ureq::Error::Timeout(_))
+        ),
         "second should timeout, got {:?}",
         results[1]
     );
