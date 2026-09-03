@@ -468,3 +468,49 @@ fn default_timeout_constant() {
     // sanity: agent was built with global timeout — indirectly verified by fetch_many_default_timeout
     let _ = agent;
 }
+
+const PAGE: &str = r#"
+    <html><body>
+        <div class="quote"><span class="text">Aaa</span>
+            <a class="tag" href="/t/x">x</a><a class="tag" href="/t/y">y</a></div>
+        <div class="quote"><span class="text">Bbb</span>
+            <a class="tag" href="/t/z">z</a></div>
+    </body></html>"#;
+
+#[test]
+fn doc_selects_nested_without_reparsing() {
+    let doc = scrape_rs::parsers::Doc::parse(PAGE);
+    let quotes = doc.select(".quote");
+    assert_eq!(quotes.len(), 2);
+    assert_eq!(quotes[0].text_of(".text").as_deref(), Some("Aaa"));
+    assert_eq!(quotes[0].texts_of(".tag"), vec!["x", "y"]);
+    assert_eq!(quotes[1].texts_of(".tag"), vec!["z"]);
+}
+
+#[test]
+fn node_attr_and_html() {
+    let doc = scrape_rs::parsers::Doc::parse(PAGE);
+    let tag = doc.first(".tag").expect("a .tag exists");
+    assert_eq!(tag.attr("href"), Some("/t/x"));
+    assert_eq!(tag.attr("missing"), None);
+    assert!(tag.html().starts_with("<a class=\"tag\""));
+    assert_eq!(tag.inner_html(), "x");
+}
+
+#[test]
+fn invalid_selector_is_empty_not_panic() {
+    let doc = scrape_rs::parsers::Doc::parse(PAGE);
+    assert!(doc.select("::::").is_empty());
+    assert_eq!(doc.first("::::").map(|node| node.text()), None);
+    assert!(scrape_rs::parsers::select_all(PAGE, "::::").is_empty());
+    assert_eq!(scrape_rs::parsers::select_first(PAGE, "::::"), None);
+    assert!(scrape_rs::parsers::select_html(PAGE, "::::").is_empty());
+}
+
+#[test]
+fn free_functions_keep_previous_behaviour() {
+    assert_eq!(scrape_rs::parsers::select_first(PAGE, ".text").as_deref(), Some("Aaa"));
+    assert_eq!(scrape_rs::parsers::select_all(PAGE, ".text"), vec!["Aaa", "Bbb"]);
+    assert_eq!(scrape_rs::parsers::select_html(PAGE, ".quote").len(), 2);
+    assert_eq!(scrape_rs::parsers::select_all(PAGE, ".text"), vec!["Aaa", "Bbb"]);
+}
