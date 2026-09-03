@@ -35,7 +35,7 @@ fn main() {
     for url in urls {
         pool.push(url);
     }
-    pool.close(); // Signal that workers can finish, and that there will not be any new task.
+    pool.close(); // Signal that workers can finish and that there will be no new tasks.
 
     // Parse pages as soon as they arrive. wait_ready blocks until there is
     // something to do, so there is no polling interval to tune.

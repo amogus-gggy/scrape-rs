@@ -4,7 +4,7 @@ use ureq::http::Method;
 
 #[derive(Error, Debug)]
 pub enum FetchError {
-    #[error("Requested {requested} threads, but avaliable only {available}")]
+    #[error("Requested {requested} threads, but only {available} are available")]
     TooManyThreads {
         requested: NonZeroUsize,
         available: NonZeroUsize,

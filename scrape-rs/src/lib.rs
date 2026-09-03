@@ -210,7 +210,7 @@ impl Drop for WorkerPool {
     }
 }
 
-/// Fetch a single URL using the shared-agent pattern.
+/// Fetch a single URL using the default agent.
 /// This is a convenience wrapper that creates a one-off agent. Prefer
 /// `fetch_link_with_agent` when you already have an `Agent`.
 pub fn fetch_link(
@@ -222,10 +222,10 @@ pub fn fetch_link(
     fetch_link_with_agent(&default_agent(), url, method, body, content_type)
 }
 
-/// Fetch a single URL using an explicit `Agent` (shared pool).
+/// Fetch a single URL using a caller-provided `Agent`.
 ///
-/// A per-request `DEFAULT_TIMEOUT` is always applied on top of the agent
-/// config, so an `Agent` without any timeout configured still cannot hang.
+/// A request-level `DEFAULT_TIMEOUT` is always applied on top of the agent
+/// configuration, so an `Agent` without a configured timeout still cannot hang.
 pub fn fetch_link_with_agent(
     agent: &Agent,
     url: &str,

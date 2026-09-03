@@ -179,7 +179,7 @@ fn fetch_link_success() {
 
 #[test]
 fn fetch_link_default_agent_success() {
-    // default_agent has 5s timeout — request that responds immediately must succeed
+    // The default agent has a 5s timeout; an immediate response must succeed.
     let srv = TestServer::spawn(|_, path, _| match path {
         "/" => (200, "default ok".to_string()),
         _ => (404, "".to_string()),
@@ -376,7 +376,7 @@ fn fetch_many_timeout_mixed() {
 
 #[test]
 fn fetch_many_default_timeout() {
-    // default timeout is 5s — a 800ms delay must succeed with default agent
+    // The default timeout is 5s; an 800ms delay must succeed with the default agent.
     let srv = TestServer::spawn(|_, path, _| {
         if path == "/delay1" {
             thread::sleep(Duration::from_millis(800));

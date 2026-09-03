@@ -5,7 +5,7 @@ Thanks for your interest in the project! The rules are simple.
 ## Rules
 
 1. **No spaghetti code.** Write clean, readable code: meaningful names, small functions, no copy-paste.
-2. **Do not rewrite to async libraries.** This project is synchronous — keep it that way. Do not migrate code to tokio/async-std or similar without discussing it with the maintainer first.
+2. **Do not rewrite using async libraries.** This project is synchronous — keep it that way. Do not migrate code to Tokio, async-std, or similar libraries without discussing it with the maintainer first.
 
 ## How to contribute
 
@@ -21,4 +21,4 @@ Thanks for your interest in the project! The rules are simple.
 ## Code style
 
 - Follow standard formatting: `cargo fmt`
-- Check code with linter: `cargo clippy`
+- Run the linter: `cargo clippy`

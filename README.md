@@ -6,7 +6,7 @@
 
 <img src="https://readme-typing-svg.demolab.com/?font=Fira+Code&pause=1000&color=EA580C&center=true&vCenter=true&width=700&lines=Multithreaded+Web+Scraping+in+Rust;Concurrent+Page+Fetching;CSS+Selector+HTML+Parsing;Incremental+Result+Processing" alt="Typing SVG" />
 
-### A small, multithreaded web scraping library in Rust. It fetches web pages concurrently using a shared connection pool and provides simple CSS-selector-based HTML parsing
+### A small, multithreaded web scraping library in Rust. It fetches web pages concurrently using a shared connection pool and provides simple CSS selector-based HTML parsing.
 
 </div>
 
@@ -21,7 +21,7 @@
 - **Worker pool** — `init_worker_pool` spins up a configurable number of worker threads and returns a queue you can push URLs into at any time, plus a `FetchHandle` to read results
 - **Incremental results** — process responses as soon as they arrive via `FetchHandle::wait_ready` (blocks until there is something to do, no polling), or wait for everything with `wait()`
 - **Single requests** — `fetch_link` for one-off GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS requests with optional body and content type
-- **Parse-once HTML querying** — `Doc` parses a page a single time and hands out `Node`s for sub-queries; compiled CSS selectors are cached per thread
+- **Single-parse HTML querying** — `Doc` parses a page once and hands out `Node`s for sub-queries; compiled CSS selectors are cached per thread
 - **Built-in timeouts** — 5 second default timeout, or bring your own `ureq::Agent`
 
 ---
